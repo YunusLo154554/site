@@ -3,13 +3,8 @@ import { useState, useEffect } from 'react';
 import CodeBlock from '../components/CodeBlock';
 import { getSnippets, deleteSnippet } from '../data/snippets';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LangContext';
 
-// Statik snippetları buraya da import edebilmek için ayrı dosyaya taşımak yerine
-// SnippetDetail, Home'dan gelen state'i kullanamaz, bu yüzden id 'u' ile başlıyorsa
-// localStorage'dan veya window üzerinden alacağız — en temiz çözüm: USEFUL_SNIPPETS'i
-// ayrı bir modüle taşımak.
-
-// Geçici çözüm: statik snippetları burada da tanımla
 const STATIC_SNIPPETS = {
   u1: {
     id: 'u1', title: 'useLocalStorage Hook', language: 'typescript', type: 'snippet',
@@ -266,6 +261,7 @@ export default function SnippetDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, lang, toggle } = useLang();
   const [snippet, setSnippet] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -283,15 +279,15 @@ export default function SnippetDetail() {
 
   if (loading) return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-      <p className="text-[#3f3f5a] font-mono text-sm animate-pulse">yükleniyor...</p>
+      <p className="text-[#3f3f5a] font-mono text-sm animate-pulse">{t.loading}</p>
     </div>
   );
 
   if (!snippet) return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
       <div className="text-center">
-        <p className="text-[#3f3f5a] font-mono mb-4">snippet bulunamadı</p>
-        <Link to="/" className="text-[#7c3aed] text-sm font-mono hover:underline">← geri dön</Link>
+        <p className="text-[#3f3f5a] font-mono mb-4">{t.notFound}</p>
+        <Link to="/" className="text-[#7c3aed] text-sm font-mono hover:underline">{t.back}</Link>
       </div>
     </div>
   );
@@ -300,7 +296,7 @@ export default function SnippetDetail() {
   const color = LANG_COLORS[snippet.language] || '#7c3aed';
 
   const handleDelete = async () => {
-    if (confirm('Bu snippet silinsin mi?')) {
+    if (confirm(lang === 'tr' ? 'Bu snippet silinsin mi?' : 'Delete this snippet?')) {
       await deleteSnippet(id);
       navigate('/');
     }
@@ -313,24 +309,22 @@ export default function SnippetDetail() {
           <div className="w-7 h-7 rounded-lg bg-[#7c3aed] flex items-center justify-center">
             <span className="text-white text-xs font-mono font-bold">&lt;/&gt;</span>
           </div>
-          <span className="font-mono font-medium text-[#e2e2f0] tracking-tight">YunusLo1545</span>
+          <span className="font-mono font-medium text-[#e2e2f0] tracking-tight">{t.siteTitle}</span>
         </Link>
         <div className="flex items-center gap-2">
+          <button onClick={toggle}
+            className="text-[10px] font-mono px-2 py-1 rounded border border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0] transition-all">
+            {lang === 'tr' ? 'EN' : 'TR'}
+          </button>
           {canEdit && (
             <>
-              <Link
-                to={`/admin?edit=${id}`}
-                className="text-xs font-mono px-3 py-1.5 rounded-lg border border-[#1e1e2e]
-                  text-[#6b6b8a] hover:text-[#e2e2f0] hover:border-[#3f3f5a] transition-all duration-200"
-              >
-                Düzenle
+              <Link to={`/admin?edit=${id}`}
+                className="text-xs font-mono px-3 py-1.5 rounded-lg border border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0] hover:border-[#3f3f5a] transition-all duration-200">
+                {t.edit}
               </Link>
-              <button
-                onClick={handleDelete}
-                className="text-xs font-mono px-3 py-1.5 rounded-lg border border-red-900/40
-                  text-red-500/60 hover:text-red-400 hover:border-red-500/40 transition-all duration-200"
-              >
-                Sil
+              <button onClick={handleDelete}
+                className="text-xs font-mono px-3 py-1.5 rounded-lg border border-red-900/40 text-red-500/60 hover:text-red-400 hover:border-red-500/40 transition-all duration-200">
+                {t.delete}
               </button>
             </>
           )}
@@ -339,7 +333,7 @@ export default function SnippetDetail() {
 
       <main className="max-w-3xl mx-auto px-6 py-12 animate-fade-in">
         <Link to="/" className="text-xs font-mono text-[#3f3f5a] hover:text-[#6b6b8a] transition-colors mb-8 inline-block">
-          ← Geri
+          {t.back}
         </Link>
         <div className="mb-6">
           <div className="flex items-start gap-3 mb-3">
@@ -364,12 +358,11 @@ export default function SnippetDetail() {
 
         {snippet.file_url && (
           <a href={snippet.file_url} download={snippet.file_name}
-            className="mt-6 flex items-center gap-3 px-4 py-3 rounded-lg border border-[#1e1e2e] bg-[#111118]
-              hover:border-[#7c3aed]/50 transition-all duration-200 group w-fit">
+            className="mt-6 flex items-center gap-3 px-4 py-3 rounded-lg border border-[#1e1e2e] bg-[#111118] hover:border-[#7c3aed]/50 transition-all duration-200 group w-fit">
             <span className="text-lg">📦</span>
             <div>
               <p className="text-xs font-mono text-[#e2e2f0] group-hover:text-white transition-colors">{snippet.file_name}</p>
-              <p className="text-[10px] font-mono text-[#3f3f5a]">İndir</p>
+              <p className="text-[10px] font-mono text-[#3f3f5a]">{lang === 'tr' ? 'İndir' : 'Download'}</p>
             </div>
           </a>
         )}
