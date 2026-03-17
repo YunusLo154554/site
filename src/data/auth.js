@@ -15,12 +15,12 @@ export async function login(username, password) {
   // Normal kullanıcı
   const { data, error } = await supabase
     .from('users')
-    .select('username')
+    .select('username, role')
     .eq('username', username)
     .eq('password', password)
     .single();
   if (error || !data) return { error: 'Kullanıcı adı veya şifre hatalı.' };
-  const user = { username: data.username, role: 'user' };
+  const user = { username: data.username, role: data.role || 'user' };
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   return { user };
 }

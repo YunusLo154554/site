@@ -399,7 +399,7 @@ export default function Home() {
               {tab.label}
             </button>
           ))}
-          {user?.role === 'admin' && (
+          {user && (
             <Link to="/admin" className="px-5 py-2 text-xs font-mono rounded-lg bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition-all duration-200">
               {t.add}
             </Link>

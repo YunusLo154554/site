@@ -31,7 +31,7 @@ export default function ChatPanel() {
     if (!input.trim() || !user) return;
     const content = input.trim();
     setInput('');
-    await supabase.from('messages').insert([{ username: user.username, content }]);
+    await supabase.from('messages').insert([{ username: user.username, content, role: user.role || 'user' }]);
   };
 
   const formatTime = (ts) =>
@@ -49,7 +49,7 @@ export default function ChatPanel() {
           <>
             {messages.map((msg) => {
               const isMe = user?.username === msg.username;
-              const isAdmin = msg.username === 'YunusLo1545';
+              const isAdmin = msg.role === 'admin' || msg.username === 'YunusLo1545';
               return (
                 <div key={msg.id} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-mono font-bold ${isAdmin ? 'bg-[#7c3aed]' : 'bg-[#1e1e2e]'}`}>

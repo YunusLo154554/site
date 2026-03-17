@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSnippets, addSnippet, updateSnippet, uploadFile, addSite, updateSite, getSites, LANGUAGES } from '../data/snippets';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
+import { supabase } from '../lib/supabase';
 
 const ALLOWED_EXT = ['rar', 'zip', 'exe', '7z', 'tar', 'gz', 'msi', 'apk', 'dmg'];
 
@@ -15,6 +16,28 @@ export default function Admin() {
   const editSiteId = searchParams.get('editSite');
 
   const [mode, setMode] = useState('snippet');
+
+  // Kullanıcı yönetimi
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    const { data, error } = await supabase.from('users').select('username, role').order('username');
+    console.log('users data:', data, 'error:', error);
+    setUsers(data || []);
+    setUsersLoading(false);
+  };
+
+  const toggleRole = async (u) => {
+    const newRole = u.role === 'admin' ? 'user' : 'admin';
+    await supabase.from('users').update({ role: newRole }).eq('username', u.username);
+    setUsers(prev => prev.map(x => x.username === u.username ? { ...x, role: newRole } : x));
+  };
+
+  useEffect(() => {
+    if (mode === 'users') loadUsers();
+  }, [mode]);
 
   // Site form
   const [siteTitle, setSiteTitle] = useState('');
@@ -159,10 +182,9 @@ export default function Admin() {
               className={`flex-1 py-2 text-xs font-mono rounded-lg border transition-all duration-200 ${mode === 'snippet' && type === 'snippet' ? 'bg-[#7c3aed] border-[#7c3aed] text-white' : 'border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0]'}`}>
               {t.snippet}
             </button>
-            <button type="button"
-              onClick={() => user?.role === 'admin' ? (setMode('snippet'), setType('app')) : null}
-              className={`flex-1 py-2 text-xs font-mono rounded-lg border transition-all duration-200 ${mode === 'snippet' && type === 'app' ? 'bg-[#7c3aed] border-[#7c3aed] text-white' : 'border-[#1e1e2e] text-[#6b6b8a]'} ${user?.role !== 'admin' ? 'opacity-30 cursor-not-allowed' : 'hover:text-[#e2e2f0]'}`}>
-              {t.app} {user?.role !== 'admin' && t.adminOnly}
+            <button type="button" onClick={() => { setMode('snippet'); setType('app'); }}
+              className={`flex-1 py-2 text-xs font-mono rounded-lg border transition-all duration-200 ${mode === 'snippet' && type === 'app' ? 'bg-[#7c3aed] border-[#7c3aed] text-white' : 'border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0]'}`}>
+              {t.app}
             </button>
             {user?.role === 'admin' && (
               <button type="button" onClick={() => setMode('site')}
@@ -170,11 +192,55 @@ export default function Admin() {
                 {t.site}
               </button>
             )}
+            {user?.role === 'admin' && (
+              <button type="button" onClick={() => setMode('users')}
+                className={`flex-1 py-2 text-xs font-mono rounded-lg border transition-all duration-200 ${mode === 'users' ? 'bg-[#7c3aed] border-[#7c3aed] text-white' : 'border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0]'}`}>
+                Kullanıcılar
+              </button>
+            )}
           </div>
         )}
 
-        {/* Site Formu */}
-        {(mode === 'site' && !editId) || editSiteId ? (
+        {/* Kullanıcı Yönetimi */}
+        {mode === 'users' && !editId && !editSiteId && (
+          <div>
+            {usersLoading ? (
+              <p className="text-center text-[#3f3f5a] font-mono text-sm animate-pulse py-10">Yükleniyor...</p>
+            ) : users.length === 0 ? (
+              <p className="text-center text-[#3f3f5a] font-mono text-sm py-10">Kayıtlı kullanıcı yok.</p>
+            ) : (
+              <div className="space-y-2">
+                {users.map(u => (
+                  <div key={u.username} className="flex items-center justify-between px-4 py-3 bg-[#111118] border border-[#1e1e2e] rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-mono font-bold ${u.role === 'admin' ? 'bg-[#7c3aed]' : 'bg-[#1e1e2e]'} text-white`}>
+                        {u.username[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-mono text-[#e2e2f0]">{u.username}</p>
+                        <p className={`text-[10px] font-mono ${u.role === 'admin' ? 'text-[#7c3aed]' : 'text-[#3f3f5a]'}`}>
+                          {u.role === 'admin' ? 'Admin' : 'Kullanıcı'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleRole(u)}
+                      className={`text-[10px] font-mono px-3 py-1.5 rounded-lg border transition-all duration-200 ${
+                        u.role === 'admin'
+                          ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                          : 'border-[#7c3aed]/40 text-[#7c3aed] hover:bg-[#7c3aed]/10'
+                      }`}>
+                      {u.role === 'admin' ? 'Admin\'i Kaldır' : 'Admin Yap'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Site & Snippet Formları */}
+        {mode !== 'users' && ((mode === 'site' && !editId) || editSiteId) ? (
           <form onSubmit={handleSiteSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-mono text-[#6b6b8a] mb-2">{t.siteTitle2}</label>
@@ -219,7 +285,7 @@ export default function Admin() {
               {siteSaving ? t.saving : editSiteId ? t.update : t.addSite}
             </button>
           </form>
-        ) : (
+        ) : mode !== 'users' ? (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-mono text-[#6b6b8a] mb-2">{t.titleLabel}</label>
@@ -303,7 +369,7 @@ export default function Admin() {
               {saving ? t.saving : editId ? t.save : t.addBtn}
             </button>
           </form>
-        )}
+        ) : null}
       </main>
     </div>
   );
