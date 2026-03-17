@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import SnippetCard from '../components/SnippetCard';
+import CreditsModal from '../components/CreditsModal';
+import SearchModal from '../components/SearchModal';
+import ChatPanel from '../components/ChatPanel';
 import { getSnippets, getSites, toggleSitePin, deleteSite, LANGUAGES } from '../data/snippets';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
@@ -294,11 +297,26 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [filterLang, setFilterLang] = useState('all');
   const [activeTab, setActiveTab] = useState('snippet');
+  const [showCredits, setShowCredits] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Ctrl+K kısayolu
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(s => !s);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const TABS = [
     { id: 'snippet', label: t.snippets },
     { id: 'app', label: t.apps },
     { id: 'sites', label: t.sites },
+    { id: 'chat', label: t.chat },
   ];
 
   const loadSnippets = () =>
@@ -329,6 +347,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
+      {showCredits && <CreditsModal onClose={() => setShowCredits(false)} />}
+      {showSearch && <SearchModal snippets={allSnippets} onClose={() => setShowSearch(false)} />}
       <header className="border-b border-[#1e1e2e] px-6 py-4 flex items-center justify-between sticky top-0 bg-[#0a0a0f]/90 backdrop-blur-sm z-20">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-[#7c3aed] flex items-center justify-center">
@@ -340,16 +360,16 @@ export default function Home() {
           <button onClick={toggle} className="text-[10px] font-mono px-2 py-1 rounded border border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0] transition-all">
             {lang === 'tr' ? 'EN' : 'TR'}
           </button>
-          {user ? (
+          <button onClick={() => setShowCredits(true)}
+            className="text-[10px] font-mono px-3 py-1.5 rounded-lg border border-[#7c3aed]/40 text-[#7c3aed] hover:bg-[#7c3aed]/10 hover:border-[#7c3aed]/70 transition-all duration-200">
+            ✦ Credits
+          </button>{user ? (
             <>
               <span className="text-xs font-mono text-[#6b6b8a]">{user.username}</span>
               {user.role === 'admin' && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#7c3aed]/20 text-[#7c3aed] border border-[#7c3aed]/30">{t.admin}</span>
               )}
-              <Link to="/chat" className="text-xs font-mono px-3 py-1.5 rounded-lg border border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0] transition-all duration-200">
-                {t.chat}
-              </Link>
-              <Link to="/admin" className="text-xs font-mono px-3 py-1.5 rounded-lg border border-[#7c3aed]/40 text-[#7c3aed] hover:bg-[#7c3aed]/10 transition-all duration-200">
+              <Link to="/admin" className="text-xs font-mono px-3 py-1.5 rounded-lg bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition-all duration-200 hidden">
                 {t.add}
               </Link>
               <button onClick={logout} className="text-xs font-mono px-3 py-1.5 rounded-lg border border-[#1e1e2e] text-[#6b6b8a] hover:text-[#e2e2f0] transition-all duration-200">
@@ -379,9 +399,14 @@ export default function Home() {
               {tab.label}
             </button>
           ))}
+          {user?.role === 'admin' && (
+            <Link to="/admin" className="px-5 py-2 text-xs font-mono rounded-lg bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition-all duration-200">
+              {t.add}
+            </Link>
+          )}
         </div>
 
-        {activeTab !== 'sites' && (
+        {activeTab !== 'sites' && activeTab !== 'chat' && (
           <div className="flex flex-col sm:flex-row gap-3 mb-8">
             <input type="text" placeholder={t.search} value={search} onChange={e => setSearch(e.target.value)}
               className="flex-1 bg-[#111118] border border-[#1e1e2e] rounded-lg px-4 py-2.5 text-sm text-[#e2e2f0] placeholder-[#3f3f5a] font-mono focus:outline-none focus:border-[#7c3aed]/60 transition-colors" />
@@ -454,7 +479,9 @@ export default function Home() {
           )
         )}
 
-        {activeTab !== 'sites' && (
+        {activeTab === 'chat' && <ChatPanel />}
+
+        {activeTab !== 'sites' && activeTab !== 'chat' && (
           loading ? (
             <div className="text-center py-20 text-[#3f3f5a] font-mono text-sm animate-pulse">{t.loading}</div>
           ) : filtered.length === 0 ? (

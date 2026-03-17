@@ -129,3 +129,32 @@ export async function deleteSnippet(id) {
     .eq('id', id);
   if (error) throw error;
 }
+
+export async function incrementViews(id) {
+  if (String(id).startsWith('u')) return;
+  // Mevcut değeri çek, +1 yap
+  const { data } = await supabase.from('snippets').select('views').eq('id', id).single();
+  const current = data?.views ?? 0;
+  await supabase.from('snippets').update({ views: current + 1 }).eq('id', id);
+}
+
+export async function toggleLike(id) {
+  if (String(id).startsWith('u')) return false;
+  const key = `liked_${id}`;
+  const liked = localStorage.getItem(key);
+  const { data } = await supabase.from('snippets').select('likes').eq('id', id).single();
+  const current = data?.likes ?? 0;
+  if (liked) {
+    await supabase.from('snippets').update({ likes: Math.max(0, current - 1) }).eq('id', id);
+    localStorage.removeItem(key);
+    return false;
+  } else {
+    await supabase.from('snippets').update({ likes: current + 1 }).eq('id', id);
+    localStorage.setItem(key, '1');
+    return true;
+  }
+}
+
+export function isLiked(id) {
+  return !!localStorage.getItem(`liked_${id}`);
+}

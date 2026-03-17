@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import CodeBlock from '../components/CodeBlock';
-import { getSnippets, deleteSnippet } from '../data/snippets';
+import { getSnippets, deleteSnippet, incrementViews, toggleLike, isLiked } from '../data/snippets';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 
@@ -264,18 +264,39 @@ export default function SnippetDetail() {
   const { t, lang, toggle } = useLang();
   const [snippet, setSnippet] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [likeAnim, setLikeAnim] = useState(false);
+  const isStatic = id.startsWith('u');
 
   useEffect(() => {
-    if (id.startsWith('u') && STATIC_SNIPPETS[id]) {
+    if (isStatic && STATIC_SNIPPETS[id]) {
       setSnippet(STATIC_SNIPPETS[id]);
       setLoading(false);
       return;
     }
     getSnippets().then(all => {
-      setSnippet(all.find(s => s.id === id) || null);
+      const s = all.find(s => s.id === id) || null;
+      setSnippet(s);
+      setLikeCount(s?.likes || 0);
       setLoading(false);
     });
+    // views sayacı — sadece Supabase snippetlar
+    incrementViews(id);
   }, [id]);
+
+  useEffect(() => {
+    if (!isStatic) setLiked(isLiked(id));
+  }, [id, isStatic]);
+
+  const handleLike = async () => {
+    if (isStatic) return;
+    setLikeAnim(true);
+    setTimeout(() => setLikeAnim(false), 400);
+    const nowLiked = await toggleLike(id);
+    setLiked(nowLiked);
+    setLikeCount(c => nowLiked ? c + 1 : Math.max(0, c - 1));
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
@@ -377,10 +398,36 @@ export default function SnippetDetail() {
           </div>
         )}
 
-        <p className="text-xs font-mono text-[#2a2a3e] mt-8">
-          {snippet.created_at}
-          {snippet.created_by && <span className="ml-3 text-[#3f3f5a]">by {snippet.created_by}</span>}
-        </p>
+        {/* Views + Likes */}
+        <div className="flex items-center gap-4 mt-8">
+          {!isStatic && (
+            <span className="flex items-center gap-1.5 text-xs font-mono text-[#3f3f5a]">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              {snippet.views || 0}
+            </span>
+          )}
+          <button
+            onClick={handleLike}
+            disabled={isStatic}
+            className={`flex items-center gap-1.5 text-xs font-mono transition-all duration-200 ${
+              isStatic ? 'cursor-default text-[#2a2a3e]' :
+              liked ? 'text-pink-400' : 'text-[#3f3f5a] hover:text-pink-400'
+            } ${likeAnim ? 'scale-125' : 'scale-100'}`}
+            style={{ transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), color 0.2s' }}
+          >
+            <svg className="w-3.5 h-3.5" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            {isStatic ? '—' : likeCount}
+          </button>
+          <p className="text-xs font-mono text-[#2a2a3e] ml-auto">
+            {snippet.created_at}
+            {snippet.created_by && <span className="ml-3 text-[#3f3f5a]">by {snippet.created_by}</span>}
+          </p>
+        </div>
       </main>
     </div>
   );
