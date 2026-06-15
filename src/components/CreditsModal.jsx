@@ -65,7 +65,7 @@ const SOCIALS = (subs) => [
   {
     name: 'Discord',
     handle: 'Sunucuya Katıl',
-    url: 'https://discord.gg/6v7sjsPPvz',
+    url: 'https://discord.gg/yuJ3fRRmdy',
     sub: null,
     color: '#5865f2',
     bg: 'rgba(88,101,242,0.08)',
